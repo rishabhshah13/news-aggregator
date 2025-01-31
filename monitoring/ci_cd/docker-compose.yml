@@ -1,0 +1,20 @@
+# docker-compose.yml - Compose file to run multiple services
+version: '3.8'
+
+services:
+  api_gateway:
+    build: .
+    container_name: api_gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+  realtime:
+    build:
+      context: .
+      dockerfile: news-aggregator/backend/realtime/realtime.py
+    container_name: realtime_service
+    ports:
+      - "6000:6000"
+    environment:
+      - FLASK_ENV=development

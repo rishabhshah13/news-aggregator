@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-aggregator-deployment
+  labels:
+    app: news-aggregator
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: news-aggregator
+  template:
+    metadata:
+      labels:
+        app: news-aggregator
+    spec:
+      containers:
+      - name: api-gateway
+        image: your-docker-repo/news-aggregator:latest
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"

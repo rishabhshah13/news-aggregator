@@ -1,0 +1,20 @@
+# Python dependencies for News Aggregator Project
+
+# Ingestion & Processing
+requests
+beautifulsoup4
+feedparser
+
+# Summarization & Clustering
+numpy
+scikit-learn
+
+# Backend & API
+Flask
+flask-socketio
+
+# Caching & Storage
+redis
+
+# Testing
+pytest

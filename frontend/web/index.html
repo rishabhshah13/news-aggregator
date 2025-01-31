@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>News Aggregator</title>
+    <style>
+        body { padding: 20px; font-family: Arial, sans-serif; }
+        .article { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>News Aggregator</h1>
+    <div id="content">
+        <div class="article">
+            <h3>Test Article</h3>
+            <textarea id="articleText" rows="4" cols="50">Enter article text here...</textarea>
+            <br><br>
+            <button onclick="getSummary()">Get Summary</button>
+            <div id="summary"></div>
+        </div>
+    </div>
+
+    <script>
+        function getSummary() {
+            const articleText = document.getElementById('articleText').value;
+            fetch('http://localhost:8000/summarize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ article_text: articleText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('summary').innerHTML = `<p><strong>Summary:</strong> ${data.summary}</p>`;
+            })
+            .catch(error => {
+                document.getElementById('summary').innerHTML = `<p style="color: red;">Error: ${error}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>

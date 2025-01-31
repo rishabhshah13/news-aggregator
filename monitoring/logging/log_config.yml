@@ -1,0 +1,19 @@
+# log_config.yml - Sample logging configuration for the News Aggregator
+version: 1
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    level: DEBUG
+    stream: ext://sys.stdout
+loggers:
+  news_aggregator:
+    level: DEBUG
+    handlers: [console]
+    propagate: no
+root:
+  level: INFO
+  handlers: [console]
