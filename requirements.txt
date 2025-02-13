@@ -4,14 +4,18 @@
 requests
 beautifulsoup4
 feedparser
+transformer
+torch
 
 # Summarization & Clustering
 numpy
 scikit-learn
+openai==0.28
 
 # Backend & API
 Flask
 flask-socketio
+python-dotenv
 
 # Caching & Storage
 redis
