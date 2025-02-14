@@ -22,3 +22,6 @@ redis
 
 # Testing
 pytest
+
+flask_cors
+flask_restx
