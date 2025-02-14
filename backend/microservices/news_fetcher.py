@@ -9,10 +9,7 @@ load_dotenv()
 # Get the News API key from environment variables
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
 
-def fetch_news():
-    # Get keyword from user
-    keyword = input("Enter a keyword to search for news articles: ")
-    
+def fetch_news(keyword=''):
     # Define the News API endpoint and parameters
     url = "https://newsapi.org/v2/top-headlines"
     params = {

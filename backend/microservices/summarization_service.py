@@ -3,23 +3,25 @@
 summarization_service.py - Microservice for Summarization
 """
 
-import os
-import openai
 import json
 import requests
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
+import openai
+from backend.core.config import Config
+from backend.core.utils import setup_logger, log_exception
 
-load_dotenv()
+# Initialize logger
+logger = setup_logger(__name__)
 
 # Configure OpenAI
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = Config.OPENAI_API_KEY
 
+@log_exception(logger)
 def fetch_article_content(url):
     try:
         # Check if URL is valid
         if not url or not url.startswith('http'):
-            print(f"Invalid URL format: {url}")
+            logger.error(f"Invalid URL format: {url}")
             return None
 
         # Set timeout and headers for request
@@ -33,32 +35,33 @@ def fetch_article_content(url):
         paragraphs = soup.find_all('p')
         
         if not paragraphs:
-            print(f"No content found at URL: {url}")
+            logger.warning(f"No content found at URL: {url}")
             return None
             
         content = ' '.join([p.get_text() for p in paragraphs])
         return content
         
     except requests.exceptions.Timeout:
-        print(f"Request timed out for URL: {url}")
+        logger.error(f"Request timed out for URL: {url}")
         return None
     except requests.exceptions.SSLError:
-        print(f"SSL verification failed for URL: {url}")
+        logger.error(f"SSL verification failed for URL: {url}")
         return None
     except requests.exceptions.ConnectionError:
-        print(f"Failed to connect to URL: {url}")
+        logger.error(f"Failed to connect to URL: {url}")
         return None
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching article content from {url}: {str(e)}")
+        logger.error(f"Error fetching article content from {url}: {str(e)}")
         return None
     except Exception as e:
-        print(f"Unexpected error processing {url}: {str(e)}")
+        logger.error(f"Unexpected error processing {url}: {str(e)}")
         return None
 
+@log_exception(logger)
 def run_summarization(text):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes text in approximately 150 words."},
                 {"role": "user", "content": f"Please summarize the following text:\n\n{text}"}
@@ -68,18 +71,20 @@ def run_summarization(text):
         )
         return response.choices[0].message['content'].strip()
     except Exception as e:
-        print(f"Error in summarization: {str(e)}")
+        logger.error(f"Error in summarization: {str(e)}")
         return "Error generating summary"
 
+@log_exception(logger)
 def process_articles():
     try:
-        # Read the news data
-        with open('/Users/akalpitdawkhar/prog_news/news-aggregator/backend/microservices/news_data.json', 'r') as file:
+        # Read the news data from configured path
+        news_data_path = Config.NEWS_DATA_DIR / 'news_data.json'
+        with open(news_data_path, 'r') as file:
             articles = json.load(file)
 
         summarized_articles = []
         for article in articles:
-            print(f"Processing article: {article['title']}")
+            logger.info(f"Processing article: {article['title']}")
             
             # Fetch full article content from URL
             content = fetch_article_content(article['url'])
@@ -99,14 +104,15 @@ def process_articles():
                 'summary': summary
             })
 
-        # Save summarized articles
-        output_path = '/Users/akalpitdawkhar/prog_news/news-aggregator-frontend/public/summarized_news.json'
+        # Save summarized articles to configured path
+        output_path = Config.SUMMARIZED_NEWS_DIR / 'summarized_news.json'
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as file:
             json.dump(summarized_articles, file, indent=4)
-        print(f"Summarized articles saved to {output_path}")
+        logger.info(f"Summarized articles saved to {output_path}")
 
     except Exception as e:
-        print(f"Error processing articles: {str(e)}")
+        logger.error(f"Error processing articles: {str(e)}")
 
 if __name__ == '__main__':
     process_articles()

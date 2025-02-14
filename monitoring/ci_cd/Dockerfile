@@ -4,15 +4,26 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file (if available) and install dependencies
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy the entire project (for demonstration; adjust as needed)
+# Copy requirements file and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
 COPY . .
 
-# Expose port 5000 for the API gateway (example)
+# Expose port 5000 for the API gateway
 EXPOSE 5000
 
-# Command to run the API gateway; modify as needed for production
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Set resource limits
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=UTF-8
+
+# Command to run the API gateway
 CMD ["python", "news-aggregator/backend/api_gateway/api_gateway.py"]
