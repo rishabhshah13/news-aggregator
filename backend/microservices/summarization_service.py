@@ -75,10 +75,14 @@ def run_summarization(text):
         return "Error generating summary"
 
 @log_exception(logger)
-def process_articles():
+def process_articles(session_id=None):
     try:
-        # Read the news data from configured path
-        news_data_path = Config.NEWS_DATA_DIR / 'news_data.json'
+        # Use session_id for file naming, default to 'default' if not provided
+        if not session_id:
+            session_id = 'default'
+        file_name = f'{session_id}_news_data.json'
+        news_data_path = Config.NEWS_DATA_DIR / file_name
+
         with open(news_data_path, 'r') as file:
             articles = json.load(file)
 
@@ -104,8 +108,9 @@ def process_articles():
                 'summary': summary
             })
 
-        # Save summarized articles to configured path
-        output_path = Config.SUMMARIZED_NEWS_DIR / 'summarized_news.json'
+        # Save summarized articles to configured path with session_id
+        output_file = f'{session_id}_summarized_news.json'
+        output_path = Config.SUMMARIZED_NEWS_DIR / output_file
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as file:
             json.dump(summarized_articles, file, indent=4)

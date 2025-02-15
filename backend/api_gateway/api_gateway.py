@@ -58,14 +58,17 @@ class Summarize(Resource):
 @news_ns.route('/fetch')
 class NewsFetch(Resource):
     @news_ns.param('keyword', 'Search keyword for news')
+    @news_ns.param('session_id', 'Session ID for tracking requests')
     def get(self):
         """Fetch news articles based on keyword"""
         try:
             keyword = request.args.get('keyword', '')
-            articles = fetch_news(keyword)
+            session_id = request.args.get('session_id')
+            articles = fetch_news(keyword, session_id)
             return {
                 'status': 'success',
-                'data': articles
+                'data': articles,
+                'session_id': session_id
             }, 200
         except Exception as e:
             return {
@@ -76,14 +79,17 @@ class NewsFetch(Resource):
 # News processing endpoint
 @news_ns.route('/process')
 class NewsProcess(Resource):
+    @news_ns.param('session_id', 'Session ID for tracking requests')
     def post(self):
         """Process and summarize articles"""
         try:
-            summarized_articles = process_articles()
+            session_id = request.args.get('session_id')
+            summarized_articles = process_articles(session_id)
             return {
                 'status': 'success',
                 'message': 'Articles processed and summarized successfully',
-                'data' : summarized_articles
+                'data' : summarized_articles,
+                'session_id': session_id
             }, 200
         except Exception as e:
             logger.error(f"Error processing articles: {str(e)}")

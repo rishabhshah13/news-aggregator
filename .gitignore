@@ -1,3 +1,5 @@
 /.env
 /newsa/
 *__pycache__*
+data/news/*
+data/summarized/*
