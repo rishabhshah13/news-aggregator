@@ -111,6 +111,8 @@ def process_articles():
             json.dump(summarized_articles, file, indent=4)
         logger.info(f"Summarized articles saved to {output_path}")
 
+        return summarized_articles
+
     except Exception as e:
         logger.error(f"Error processing articles: {str(e)}")
 

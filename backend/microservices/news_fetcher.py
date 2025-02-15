@@ -2,6 +2,8 @@ import os
 import requests
 from dotenv import load_dotenv
 import json
+from backend.core.config import Config
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,6 +37,8 @@ def fetch_news(keyword=''):
                     print(f"Title: {article['title']}")
                     print(f"Description: {article['description']}")
                     print(f"URL: {article['url']}\n")
+            
+            return articles
         else:
             print("Failed to fetch news:", news_data.get('message'))
 
@@ -43,7 +47,8 @@ def fetch_news(keyword=''):
 
 def write_to_file(articles):
     # Define the file path
-    file_path = '/Users/akalpitdawkhar/prog_news/news-aggregator/backend/microservices/news_data.json'
+    # file_path = '/Users/akalpitdawkhar/prog_news/news-aggregator/backend/microservices/news_data.json'
+    file_path = Config.NEWS_DATA_DIR / 'news_data.json'
     try:
         # Write articles to the file in JSON format
         with open(file_path, 'w') as file:

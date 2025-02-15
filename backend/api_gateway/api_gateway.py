@@ -79,10 +79,11 @@ class NewsProcess(Resource):
     def post(self):
         """Process and summarize articles"""
         try:
-            process_articles()
+            summarized_articles = process_articles()
             return {
                 'status': 'success',
-                'message': 'Articles processed and summarized successfully'
+                'message': 'Articles processed and summarized successfully',
+                'data' : summarized_articles
             }, 200
         except Exception as e:
             logger.error(f"Error processing articles: {str(e)}")
