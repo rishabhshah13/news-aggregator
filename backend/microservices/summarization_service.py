@@ -61,7 +61,7 @@ def fetch_article_content(url):
 def run_summarization(text):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5 turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes text in approximately 150 words."},
                 {"role": "user", "content": f"Please summarize the following text:\n\n{text}"}
