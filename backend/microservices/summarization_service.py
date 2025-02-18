@@ -61,7 +61,9 @@ def fetch_article_content(url):
 @log_exception(logger)
 def run_summarization(text):
     try:
-        #     model="gpt-3.5 turbo",
+        return "Summarized text here"
+    
+    #     model="gpt-3.5 turbo",
         response = client.chat.completions.create(
         model="gpt-4o-mini",
             messages=[
