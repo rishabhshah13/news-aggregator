@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import openai
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
+import yake
 
 # Initialize logger
 logger = setup_logger(__name__)
@@ -75,6 +76,13 @@ def run_summarization(text):
         return "Error generating summary"
 
 @log_exception(logger)
+def get_keywords(text,num_keywords=1):
+    kw_extractor = yake.KeywordExtractor(top=num_keywords, lan='en')
+    keywords = kw_extractor.extract_keywords(text)
+    return [kw[0] for kw in keywords]
+
+
+@log_exception(logger)
 def process_articles(session_id=None):
     try:
         # Use session_id for file naming, default to 'default' if not provided
@@ -105,7 +113,8 @@ def process_articles(session_id=None):
                 'url': article['url'],
                 'urlToImage': article.get('urlToImage'),
                 'content': article.get('content', ''),
-                'summary': summary
+                'summary': summary,
+                'filter_keywords': get_keywords(article.get('content', ''))
             })
 
         # Save summarized articles to configured path with session_id
