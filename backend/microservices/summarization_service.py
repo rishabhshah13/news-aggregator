@@ -15,6 +15,7 @@ logger = setup_logger(__name__)
 
 # Configure OpenAI
 openai.api_key = Config.OPENAI_API_KEY
+client = openai.OpenAI()
 
 @log_exception(logger)
 def fetch_article_content(url):
@@ -60,8 +61,9 @@ def fetch_article_content(url):
 @log_exception(logger)
 def run_summarization(text):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5 turbo",
+        #     model="gpt-3.5 turbo",
+        response = client.chat.completions.create(
+        model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes text in approximately 150 words."},
                 {"role": "user", "content": f"Please summarize the following text:\n\n{text}"}
@@ -69,7 +71,7 @@ def run_summarization(text):
             max_tokens=200,
             temperature=0.5
         )
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         logger.error(f"Error in summarization: {str(e)}")
         return "Error generating summary"
