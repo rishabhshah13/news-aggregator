@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "username": "testuser",
+        "password": "password123",
+        "email": "test@example.com",
+        "firstName": "Test",
+        "lastName": "User"
+    },
+    {
+        "id": "92e4c2fe-890d-49df-b9e7-9ce84498ca71",
+        "username": "akal",
+        "password": "akal",
+        "email": "akal@akal.com",
+        "firstName": "",
+        "lastName": ""
+    },
+    {
+        "id": "68e583ee-e9e8-44bc-9642-0344429b0c0c",
+        "username": "user",
+        "password": "user",
+        "email": "user@user.com",
+        "firstName": "",
+        "lastName": ""
+    }
+]
