@@ -4,7 +4,7 @@
 requests
 beautifulsoup4
 feedparser
-transformer
+# transformer
 torch
 
 # Summarization & Clustering

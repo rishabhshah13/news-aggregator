@@ -25,9 +25,10 @@ class Config:
     NEWS_API_KEY = os.getenv('NEWS_API_KEY')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     
+
     # CORS Configuration
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
-    
+    print("CORS_ORIGINS", CORS_ORIGINS)
     # Logging Configuration
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

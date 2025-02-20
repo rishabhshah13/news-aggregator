@@ -95,27 +95,64 @@ class Summarize(Resource):
         summary = run_summarization(article_text)
         return {"summary": summary}, 200
 
-# News fetch endpoint
 @news_ns.route('/fetch')
 class NewsFetch(Resource):
     @news_ns.param('keyword', 'Search keyword for news')
-    @news_ns.param('session_id', 'Session ID for tracking requests')
+    @news_ns.param('user_id', 'User ID for logging search history')
     def get(self):
-        """Fetch news articles based on keyword"""
+        """
+        Fetch news articles, store them in Supabase, and log user search history if a user ID is provided.
+        """
         try:
             keyword = request.args.get('keyword', '')
-            session_id = request.args.get('session_id')
-            articles = fetch_news(keyword, session_id)
-            return {
+            user_id = request.args.get('user_id')  # optional
+
+            # Fetch articles from your existing news_fetcher module.
+            articles = fetch_news(keyword)  # This returns a list of articles.
+            stored_article_ids = []
+
+            for article in articles:
+                # Store each article in the database; get its unique id.
+                article_id = store_article_in_supabase(article)
+                stored_article_ids.append(article_id)
+
+                # If the request included a user_id, log the search for this article.
+                if user_id:
+                    log_user_search(user_id, article_id)
+
+            return jsonify({
                 'status': 'success',
-                'data': articles,
-                'session_id': session_id
-            }, 200
+                'data': stored_article_ids
+            }), 200
+
         except Exception as e:
-            return {
+            return jsonify({
                 'status': 'error',
                 'message': str(e)
-            }, 500
+            }), 500
+            
+# # News fetch endpoint
+# @news_ns.route('/fetch')
+# class NewsFetch(Resource):
+#     @news_ns.param('keyword', 'Search keyword for news')
+#     @news_ns.param('session_id', 'Session ID for tracking requests')
+#     def get(self):
+#         """Fetch news articles based on keyword"""
+#         try:
+#             keyword = request.args.get('keyword', '')
+#             session_id = request.args.get('session_id')
+#             articles = fetch_news(keyword, session_id)
+#             return {
+#                 'status': 'success',
+#                 'data': articles,
+#                 'session_id': session_id
+#             }, 200
+#         except Exception as e:
+#             return {
+#                 'status': 'error',
+#                 'message': str(e)
+#             }, 500
+
 
 # News processing endpoint
 @news_ns.route('/process')
