@@ -62,3 +62,30 @@ def add_bookmark(user_id, news_id):
     except Exception as e:
         print(f"Error adding bookmark: {str(e)}")
         raise e
+
+def get_user_bookmarks(user_id):
+    """
+    Retrieves all bookmarked articles for a user with full article details.
+    Returns a list of bookmarked articles with their details.
+    """
+    try:
+        # Query user_bookmarks and join with news_articles to get full article details
+        result = supabase.table("user_bookmarks") \
+            .select(
+                "id,"
+                "news_articles(id,title,summary,content,source,published_at,url,image)"
+            ) \
+            .eq("user_id", user_id) \
+            .execute()
+        
+        # Transform the result to a more friendly format
+        bookmarks = []
+        for item in result.data:
+            article = item["news_articles"]
+            article["bookmark_id"] = item["id"]
+            bookmarks.append(article)
+            
+        return bookmarks
+    except Exception as e:
+        print(f"Error fetching bookmarks: {str(e)}")
+        raise e

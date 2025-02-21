@@ -26,7 +26,7 @@ from backend.microservices.news_fetcher import fetch_news
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
-from backend.microservices.news_storage import store_article_in_supabase, log_user_search
+from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark
 # Initialize logger
 logger = setup_logger(__name__)
 
@@ -267,6 +267,31 @@ class UserProfile(Resource):
 @bookmark_ns.route('/')
 class Bookmark(Resource):
     @token_required
+    def get(self):
+        """Get all bookmarked articles for the authenticated user"""
+        try:
+            # Get the user ID from the token
+            auth_header = request.headers.get('Authorization')
+            token = auth_header.split()[1]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload.get('id')
+
+            # Get bookmarks using the news_storage service
+            bookmarks = get_user_bookmarks(user_id)
+            
+            return {
+                'status': 'success',
+                'data': bookmarks
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Error fetching bookmarks: {str(e)}")
+            return {
+                'status': 'error',
+                'message': str(e)
+            }, 500
+
+    @token_required
     def post(self):
         """Add a bookmark for a news article"""
         try:
@@ -289,7 +314,9 @@ class Bookmark(Resource):
             return {
                 'status': 'success',
                 'message': 'Bookmark added successfully',
-                'data': bookmark
+                'data': {
+                    'bookmark_id': bookmark['id'] if isinstance(bookmark, dict) else bookmark
+                }
             }, 201
 
         except Exception as e:
