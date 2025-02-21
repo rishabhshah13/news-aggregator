@@ -3,7 +3,7 @@
 This Flask application aggregates endpoints from various microservices.
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields
 import sys
@@ -15,12 +15,18 @@ import datetime
 from functools import wraps
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+# load env
+from dotenv import load_dotenv
+load_dotenv()
+
+
+
 from backend.microservices.summarization_service import run_summarization, process_articles
 from backend.microservices.news_fetcher import fetch_news
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
-
+from backend.microservices.news_storage import store_article_in_supabase, log_user_search
 # Initialize logger
 logger = setup_logger(__name__)
 
@@ -99,6 +105,7 @@ class Summarize(Resource):
 class NewsFetch(Resource):
     @news_ns.param('keyword', 'Search keyword for news')
     @news_ns.param('user_id', 'User ID for logging search history')
+    @news_ns.param('session_id', 'Session ID for tracking requests')
     def get(self):
         """
         Fetch news articles, store them in Supabase, and log user search history if a user ID is provided.
@@ -106,6 +113,7 @@ class NewsFetch(Resource):
         try:
             keyword = request.args.get('keyword', '')
             user_id = request.args.get('user_id')  # optional
+            session_id = request.args.get('session_id')
 
             # Fetch articles from your existing news_fetcher module.
             articles = fetch_news(keyword)  # This returns a list of articles.
@@ -118,40 +126,20 @@ class NewsFetch(Resource):
 
                 # If the request included a user_id, log the search for this article.
                 if user_id:
-                    log_user_search(user_id, article_id)
+                    log_user_search(user_id, article_id, session_id)
 
-            return jsonify({
+            return make_response(jsonify({
                 'status': 'success',
                 'data': stored_article_ids
-            }), 200
+            }), 200)
 
         except Exception as e:
-            return jsonify({
+            return make_response(jsonify({
                 'status': 'error',
                 'message': str(e)
-            }), 500
+            }), 500)
+
             
-# # News fetch endpoint
-# @news_ns.route('/fetch')
-# class NewsFetch(Resource):
-#     @news_ns.param('keyword', 'Search keyword for news')
-#     @news_ns.param('session_id', 'Session ID for tracking requests')
-#     def get(self):
-#         """Fetch news articles based on keyword"""
-#         try:
-#             keyword = request.args.get('keyword', '')
-#             session_id = request.args.get('session_id')
-#             articles = fetch_news(keyword, session_id)
-#             return {
-#                 'status': 'success',
-#                 'data': articles,
-#                 'session_id': session_id
-#             }, 200
-#         except Exception as e:
-#             return {
-#                 'status': 'error',
-#                 'message': str(e)
-#             }, 500
 
 
 # News processing endpoint

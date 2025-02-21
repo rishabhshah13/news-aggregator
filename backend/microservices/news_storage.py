@@ -5,11 +5,11 @@ import datetime
 from supabase import create_client, Client  # Make sure you're using supabase-py or your preferred client
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv('../../.env')
 
 # Use your service key here for secure server-side operations.
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 def store_article_in_supabase(article):
@@ -36,13 +36,14 @@ def store_article_in_supabase(article):
         }).execute()
         return result.data[0]["id"]
 
-def log_user_search(user_id, news_id):
+def log_user_search(user_id, news_id, session_id):
     """
     Logs a search event by inserting a record into the user_search_history join table.
     """
     result = supabase.table("user_search_history").insert({
         "user_id": user_id,
         "news_id": news_id,
-        "searched_at": datetime.datetime.utcnow().isoformat()
+        "searched_at": datetime.datetime.utcnow().isoformat(),
+        "session_id": session_id,
     }).execute()
     return result

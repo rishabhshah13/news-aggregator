@@ -10,6 +10,7 @@ import openai
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 import yake
+import os
 
 # Initialize logger
 logger = setup_logger(__name__)
@@ -17,6 +18,16 @@ logger = setup_logger(__name__)
 # Configure OpenAI
 openai.api_key = Config.OPENAI_API_KEY
 client = openai.OpenAI()
+from supabase import create_client, Client  # Make sure you're using supabase-py or your preferred client
+
+from dotenv import load_dotenv
+load_dotenv('../../.env')
+
+# Use your service key here for secure server-side operations.
+SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
 
 @log_exception(logger)
 def fetch_article_content(url):
@@ -87,52 +98,60 @@ def get_keywords(text,num_keywords=1):
 
 
 @log_exception(logger)
-def process_articles(session_id=None):
+def process_articles(session_id):
     try:
-        # Use session_id for file naming, default to 'default' if not provided
-        if not session_id:
-            session_id = 'default'
-        file_name = f'{session_id}_news_data.json'
-        news_data_path = Config.NEWS_DATA_DIR / file_name
+        # Query only articles that belong to the current session.
+        # result = supabase.table("news_articles").select("*").eq("session_id", session_id).execute()
+        # articles = result.data
+        
+        # First, query the user_search_history table for records with this session_id.
+        history_result = supabase.table("user_search_history").select("news_id").eq("session_id", session_id).execute()
+        article_ids = [record["news_id"] for record in history_result.data]
 
-        with open(news_data_path, 'r') as file:
-            articles = json.load(file)
+        # Now, query the news_articles table for those article IDs.
+        articles = []
+        if article_ids:
+            result = supabase.table("news_articles").select("*").in_("id", article_ids).execute()
+            articles = result.data
 
         summarized_articles = []
         for article in articles:
             logger.info(f"Processing article: {article['title']}")
             
-            # Fetch full article content from URL
-            content = fetch_article_content(article['url'])
+            content = article.get('content')
+            if not content:
+                content = fetch_article_content(article['url'])
+            
             if content:
                 summary = run_summarization(content)
             else:
                 summary = run_summarization(article.get('content', ''))
-
+            
             summarized_articles.append({
                 'title': article['title'],
                 'author': article.get('author', 'Unknown Author'),
-                'source': article['source']['name'],
-                'publishedAt': article['publishedAt'],
+                'source': article.get('source'),
+                'publishedAt': article.get('published_at'),
                 'url': article['url'],
-                'urlToImage': article.get('urlToImage'),
+                'urlToImage': article.get('image'),
                 'content': article.get('content', ''),
                 'summary': summary,
                 'filter_keywords': get_keywords(article.get('content', ''))
             })
 
-        # Save summarized articles to configured path with session_id
-        output_file = f'{session_id}_summarized_news.json'
-        output_path = Config.SUMMARIZED_NEWS_DIR / output_file
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w') as file:
-            json.dump(summarized_articles, file, indent=4)
-        logger.info(f"Summarized articles saved to {output_path}")
+        # Optionally, save or return the summarized articles.
+        # output_file = f'{session_id}_summarized_news.json'
+        # output_path = Config.get_summarized_news_path() / output_file
+        # with open(output_path, 'w') as file:
+        #     json.dump(summarized_articles, file, indent=4)
+        # logger.info(f"Summarized articles saved to {output_path}")
 
         return summarized_articles
 
     except Exception as e:
         logger.error(f"Error processing articles: {str(e)}")
+        raise e
+    
 
 if __name__ == '__main__':
     process_articles()

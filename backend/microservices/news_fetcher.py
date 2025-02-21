@@ -33,11 +33,12 @@ def fetch_news(keyword='', session_id=None):
             if not articles:
                 print("No articles found for the given keyword.")
             else:
+                pass
                 # Use session_id in the filename if provided
-                if session_id:
-                    write_to_file(articles, session_id)
-                else:
-                    write_to_file(articles)
+                # if session_id:
+                #     write_to_file(articles, session_id)
+                # else:
+                #     write_to_file(articles)
                 # for article in articles:
                 #     print(f"Title: {article['title']}")
                 #     print(f"Description: {article['description']}")
