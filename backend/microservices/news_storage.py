@@ -47,3 +47,18 @@ def log_user_search(user_id, news_id, session_id):
         "session_id": session_id,
     }).execute()
     return result
+
+def add_bookmark(user_id, news_id):
+    """
+    Adds a bookmark by inserting a record into the user_bookmarks table.
+    Returns the created bookmark record if successful.
+    """
+    try:
+        result = supabase.table("user_bookmarks").insert({
+            "user_id": user_id,
+            "news_id": news_id,
+        }).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        print(f"Error adding bookmark: {str(e)}")
+        raise e

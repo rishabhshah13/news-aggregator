@@ -45,6 +45,7 @@ health_ns = api.namespace('health', description='Health check operations')
 summarize_ns = api.namespace('summarize', description='Text summarization operations')
 user_ns = api.namespace('api/user', description='User operations')
 auth_ns = api.namespace('api/auth', description='Authentication operations')
+bookmark_ns = api.namespace('api/bookmarks', description='Bookmark operations')
 
 def token_required(f):
     @wraps(f)
@@ -262,6 +263,68 @@ class UserProfile(Resource):
             return {'error': 'User not found'}, 404
             
         return {k: user[k] for k in user if k != 'password'}, 200
+
+@bookmark_ns.route('/')
+class Bookmark(Resource):
+    @token_required
+    def post(self):
+        """Add a bookmark for a news article"""
+        try:
+            # Get the user ID from the token
+            auth_header = request.headers.get('Authorization')
+            token = auth_header.split()[1]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload.get('id')
+
+            # Get the news article ID from the request body
+            data = request.get_json()
+            news_id = data.get('news_id')
+
+            if not news_id:
+                return {'error': 'News article ID is required'}, 400
+
+            # Add the bookmark using the news_storage service
+            bookmark = add_bookmark(user_id, news_id)
+            
+            return {
+                'status': 'success',
+                'message': 'Bookmark added successfully',
+                'data': bookmark
+            }, 201
+
+        except Exception as e:
+            logger.error(f"Error adding bookmark: {str(e)}")
+            return {
+                'status': 'error',
+                'message': str(e)
+            }, 500
+
+@bookmark_ns.route('/<string:bookmark_id>')
+class BookmarkDelete(Resource):
+    @token_required
+    def delete(self, bookmark_id):
+        """Remove a bookmark for a news article"""
+        try:
+            # Get the user ID from the token
+            auth_header = request.headers.get('Authorization')
+            token = auth_header.split()[1]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            user_id = payload.get('id')
+
+            # Delete the bookmark using the news_storage service
+            result = delete_bookmark(user_id, bookmark_id)
+            
+            return {
+                'status': 'success',
+                'message': 'Bookmark removed successfully'
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Error removing bookmark: {str(e)}")
+            return {
+                'status': 'error',
+                'message': str(e)
+            }, 500
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else Config.API_PORT
