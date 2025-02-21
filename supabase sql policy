@@ -1,0 +1,44 @@
+-- Drop the table if it already exists
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Create the profiles table
+CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY,         -- Should match the authenticated user's id (auth.uid())
+  email text,
+  display_name text,
+  avatar_url text,
+  bio text,
+  website text,
+  location text,
+  preference jsonb,            -- Using jsonb for flexibility
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz
+);
+
+-- Enable Row-Level Security on the table
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop any existing policy named "Users can manage their own profile"
+DROP POLICY IF EXISTS "Users can manage their own profile" ON public.profiles;
+
+-- Create a unified policy that applies to all operations
+CREATE POLICY "Users can manage their own profile"
+  ON public.profiles
+  FOR ALL
+  USING ( auth.uid() IS NOT NULL AND auth.uid() = id )
+  WITH CHECK ( auth.uid() IS NOT NULL AND auth.uid() = id );
+
+
+
+
+
+1. delete the user from supabase and then try to run the query, it'll run successfully which means the app is not checking if the user is there in the supabase,
+it justs checks for the cookie, or JWT or something. basically copying local storage info in network tab will log the user in?
+2. Add header in all the pages which has sign in and sign out functionality
+3. Make profile page better
+  3.1 Make the profile picture and image
+  3.2 Remove Avatar URL field
+
+
+
+combine Header.tsx and LandingHeader.tsx such that it has different funcionatlity if rendered in LandingPage.tsx and in NewsApp.tsx
