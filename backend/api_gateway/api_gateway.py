@@ -51,11 +51,21 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
+
+        print(auth_header)
+
+
         if not auth_header:
             return {'error': 'Authorization header missing'}, 401
         try:
             token = auth_header.split()[1]
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            print("eomthigs")
+            print(app.config['SECRET_KEY'])
+            # payload = jwt.decode(token, "xpOvQQ2OG/xmVaPNoiPr5wzRMJQ1+vOH0QsGroxtFqHOr8MSM6JPNQmCZz9pKfBNOGohGj31xHnqgm5OXlBDvg==", algorithms=['HS256'])
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
+            print(payload)
+            print('\n\n\n')
+
             return f(*args, **kwargs)
         except Exception as e:
             return {'error': 'Invalid token', 'message': str(e)}, 401
@@ -139,8 +149,6 @@ class NewsFetch(Resource):
                 'status': 'error',
                 'message': str(e)
             }), 500)
-
-            
 
 
 # News processing endpoint
@@ -273,7 +281,7 @@ class Bookmark(Resource):
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
             user_id = payload.get('id')
 
             # Get bookmarks using the news_storage service
@@ -295,20 +303,29 @@ class Bookmark(Resource):
     def post(self):
         """Add a bookmark for a news article"""
         try:
+            print("asdfsjdknbdsjkb")
+            print("asdfsjdknbdsjkb")
+            print("asdfsjdknbdsjkb")
+            print("asdfsjdknbdsjkb")
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-            user_id = payload.get('id')
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
+            user_id = payload.get('sub')
 
             # Get the news article ID from the request body
             data = request.get_json()
             news_id = data.get('news_id')
 
+            print(data['user_id'])
+            print()
+            print(data)
+
             if not news_id:
                 return {'error': 'News article ID is required'}, 400
 
             # Add the bookmark using the news_storage service
+            # bookmark = add_bookmark(user_id, '054c021a-f6f3-44b2-a43f-1ca0d211eb15')
             bookmark = add_bookmark(user_id, news_id)
             
             return {
@@ -335,7 +352,7 @@ class BookmarkDelete(Resource):
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
             user_id = payload.get('id')
 
             # Delete the bookmark using the news_storage service
