@@ -68,3 +68,8 @@ def write_to_file(articles, session_id=None):
 
 if __name__ == '__main__':
     fetch_news()
+
+
+
+
+

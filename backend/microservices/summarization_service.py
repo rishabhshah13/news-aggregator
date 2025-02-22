@@ -128,6 +128,7 @@ def process_articles(session_id):
                 summary = run_summarization(article.get('content', ''))
             
             summarized_articles.append({
+                'id': article['id'],
                 'title': article['title'],
                 'author': article.get('author', 'Unknown Author'),
                 'source': article.get('source'),

@@ -47,3 +47,57 @@ def log_user_search(user_id, news_id, session_id):
         "session_id": session_id,
     }).execute()
     return result
+
+def add_bookmark(user_id, news_id):
+    """
+    Adds a bookmark by inserting a record into the user_bookmarks table.
+    Returns the created bookmark record if successful.
+    """
+    try:
+        result = supabase.table("user_bookmarks").insert({
+            "user_id": user_id,
+            "news_id": news_id,
+        }).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        print(f"Error adding bookmark: {str(e)}")
+        raise e
+
+def get_user_bookmarks(user_id):
+    """
+    Retrieves all bookmarked articles for a user with full article details.
+    Returns a list of bookmarked articles with their details.
+    """
+    try:
+        # Query user_bookmarks and join with news_articles to get full article details
+        result = supabase.table("user_bookmarks") \
+            .select(
+                "id,"
+                "news_articles(id,title,summary,content,source,published_at,url,image)"
+            ) \
+            .eq("user_id", user_id) \
+            .execute()
+        
+        # Transform the result to a more friendly format
+        bookmarks = []
+        for item in result.data:
+            article = item["news_articles"]
+            article["bookmark_id"] = item["id"]
+            bookmarks.append(article)
+            
+        return bookmarks
+    except Exception as e:
+        print(f"Error fetching bookmarks: {str(e)}")
+        raise e
+
+def delete_bookmark(user_id, bookmark_id):
+    """
+    Deletes a bookmark from the user_bookmarks table.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        result = supabase.table("user_bookmarks").delete().eq("id", bookmark_id).eq("user_id", user_id).execute()
+        return len(result.data) > 0
+    except Exception as e:
+        print(f"Error deleting bookmark: {str(e)}")
+        raise e
