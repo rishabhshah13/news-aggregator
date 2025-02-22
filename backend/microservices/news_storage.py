@@ -89,3 +89,15 @@ def get_user_bookmarks(user_id):
     except Exception as e:
         print(f"Error fetching bookmarks: {str(e)}")
         raise e
+
+def delete_bookmark(user_id, bookmark_id):
+    """
+    Deletes a bookmark from the user_bookmarks table.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        result = supabase.table("user_bookmarks").delete().eq("id", bookmark_id).eq("user_id", user_id).execute()
+        return len(result.data) > 0
+    except Exception as e:
+        print(f"Error deleting bookmark: {str(e)}")
+        raise e

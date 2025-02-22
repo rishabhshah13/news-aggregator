@@ -26,14 +26,14 @@ from backend.microservices.news_fetcher import fetch_news
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
-from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks
+from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks, delete_bookmark
 # Initialize logger
 logger = setup_logger(__name__)
 
 # Initialize Flask app with CORS support
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')  # Change this in production
-CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True, allow_headers=['Content-Type', 'Authorization'])
+CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True, allow_headers=['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'], methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], expose_headers=['Access-Control-Allow-Origin'])
 
 # Initialize Flask-RestX
 api = Api(app, version='1.0', title='News Aggregator API',
@@ -51,7 +51,6 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
-        print("here")
         if not auth_header:
             return {'error': 'Authorization header missing'}, 401
         try:
@@ -266,7 +265,6 @@ class Bookmark(Resource):
     def get(self):
         """Get all bookmarked articles for the authenticated user"""
         try:
-            print('here')
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
@@ -292,7 +290,6 @@ class Bookmark(Resource):
     def post(self):
         """Add a bookmark for a news article"""
         try:
-
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
