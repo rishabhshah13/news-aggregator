@@ -26,7 +26,7 @@ from backend.microservices.news_fetcher import fetch_news
 from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
-from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark
+from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks
 # Initialize logger
 logger = setup_logger(__name__)
 
@@ -51,20 +51,12 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
-
-        print(auth_header)
-
-
+        print("here")
         if not auth_header:
             return {'error': 'Authorization header missing'}, 401
         try:
             token = auth_header.split()[1]
-            print("eomthigs")
-            print(app.config['SECRET_KEY'])
-            # payload = jwt.decode(token, "xpOvQQ2OG/xmVaPNoiPr5wzRMJQ1+vOH0QsGroxtFqHOr8MSM6JPNQmCZz9pKfBNOGohGj31xHnqgm5OXlBDvg==", algorithms=['HS256'])
             payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
-            print(payload)
-            print('\n\n\n')
 
             return f(*args, **kwargs)
         except Exception as e:
@@ -178,7 +170,6 @@ class NewsProcess(Resource):
 class Signup(Resource):
     @auth_ns.expect(signup_model)
     def post(self):
-        print('signup')
         """Register a new user"""
         data = request.get_json()
         username = data.get('username')
@@ -205,8 +196,6 @@ class Signup(Resource):
             'firstName': firstName,
             'lastName': lastName
         }
-
-        print(new_user)
         
         users.append(new_user)
 
@@ -232,7 +221,6 @@ class Signup(Resource):
 class Login(Resource):
     def post(self):
         """Login and get authentication token"""
-        print('login in')
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
@@ -278,15 +266,16 @@ class Bookmark(Resource):
     def get(self):
         """Get all bookmarked articles for the authenticated user"""
         try:
+            print('here')
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
-            user_id = payload.get('id')
+            user_id = payload.get('sub')
 
             # Get bookmarks using the news_storage service
             bookmarks = get_user_bookmarks(user_id)
-            
+            print(bookmarks)
             return {
                 'status': 'success',
                 'data': bookmarks
@@ -303,10 +292,7 @@ class Bookmark(Resource):
     def post(self):
         """Add a bookmark for a news article"""
         try:
-            print("asdfsjdknbdsjkb")
-            print("asdfsjdknbdsjkb")
-            print("asdfsjdknbdsjkb")
-            print("asdfsjdknbdsjkb")
+
             # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
@@ -316,10 +302,6 @@ class Bookmark(Resource):
             # Get the news article ID from the request body
             data = request.get_json()
             news_id = data.get('news_id')
-
-            print(data['user_id'])
-            print()
-            print(data)
 
             if not news_id:
                 return {'error': 'News article ID is required'}, 400
