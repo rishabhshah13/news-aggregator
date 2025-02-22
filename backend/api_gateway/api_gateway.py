@@ -273,7 +273,7 @@ class Bookmark(Resource):
 
             # Get bookmarks using the news_storage service
             bookmarks = get_user_bookmarks(user_id)
-            print(bookmarks)
+
             return {
                 'status': 'success',
                 'data': bookmarks
@@ -332,7 +332,7 @@ class BookmarkDelete(Resource):
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
-            user_id = payload.get('id')
+            user_id = payload.get('sub')
 
             # Delete the bookmark using the news_storage service
             result = delete_bookmark(user_id, bookmark_id)
