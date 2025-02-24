@@ -3,15 +3,16 @@
 This Flask application aggregates endpoints from various microservices.
 """
 
-from flask import Flask, jsonify, request, make_response
+from flask import Blueprint, Flask, jsonify, request, make_response
 from flask_cors import CORS
-from flask_restx import Api, Resource, fields
+from flask_restx import Api, Resource, fields, Namespace
 import sys
 import os
 import jwt
 import json
 import uuid
 import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -27,6 +28,7 @@ from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
 from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks, delete_bookmark
+
 # Initialize logger
 logger = setup_logger(__name__)
 
@@ -46,6 +48,7 @@ summarize_ns = api.namespace('summarize', description='Text summarization operat
 user_ns = api.namespace('api/user', description='User operations')
 auth_ns = api.namespace('api/auth', description='Authentication operations')
 bookmark_ns = api.namespace('api/bookmarks', description='Bookmark operations')
+story_tracking_ns = api.namespace('api/story_tracking', description='Story tracking operations')
 
 def token_required(f):
     @wraps(f)
@@ -348,6 +351,48 @@ class BookmarkDelete(Resource):
                 'status': 'error',
                 'message': str(e)
             }, 500
+            
+            
+            
+@story_tracking_ns.route('/')
+class StoryTracking(Resource):
+    @story_tracking_ns.param('keyword', 'Keyword to track for news updates')
+    def get(self):
+        """Fetch latest news for a tracked keyword"""
+        try:
+            keyword = request.args.get('keyword')
+            if not keyword:
+                return make_response(jsonify({
+                    'status': 'error',
+                    'message': 'Keyword parameter is required'
+                }), 400)
+
+            # Fetch latest articles for the keyword
+            articles = fetch_news(keyword)
+            
+            # Store articles and prepare response
+            processed_articles = []
+            for article in articles:
+                article_id = store_article_in_supabase(article)
+                processed_articles.append({
+                    'id': article_id,
+                    'title': article.get('title'),
+                    'url': article.get('url'),
+                    'source': article.get('source'),
+                    'publishedAt': article.get('publishedAt', datetime.now().isoformat())
+                })
+
+            return make_response(jsonify({
+                'status': 'success',
+                'articles': processed_articles
+            }), 200)
+
+        except Exception as e:
+            logger.error(f"Error in story tracking: {str(e)}")
+            return make_response(jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500)
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else Config.API_PORT
