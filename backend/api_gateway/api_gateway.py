@@ -1,8 +1,30 @@
+
 #!/usr/bin/env python3
-"""api_gateway.py - API Gateway for the News Aggregator Backend
-This Flask application aggregates endpoints from various microservices.
+"""API Gateway for the News Aggregator Backend
+
+This module serves as the central API Gateway for the News Aggregator application.
+It provides a unified interface for clients to interact with various microservices
+including news fetching, summarization, authentication, and story tracking.
+
+Key Features:
+- RESTful API endpoints using Flask-RestX
+- JWT-based authentication
+- CORS support for cross-origin requests
+- Swagger documentation
+- Error handling and logging
+- Integration with multiple microservices
+
+Endpoints:
+- /api/news: News fetching and processing
+- /health: System health check
+- /summarize: Article summarization
+- /api/user: User profile management
+- /api/auth: Authentication operations
+- /api/bookmarks: Bookmark management
+- /api/story_tracking: Story tracking functionality
 """
 
+# Standard library imports
 from flask import Blueprint, Flask, jsonify, request, make_response
 from flask_cors import CORS
 from flask_restx import Api, Resource, fields, Namespace
@@ -14,15 +36,18 @@ import uuid
 import datetime
 from datetime import datetime, timedelta
 from functools import wraps
+
+# Add project root to Python path for relative imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 print("[DEBUG] [api_gateway] [startup] API Gateway starting up...")
 
-# load env
+# Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
 print("[DEBUG] [api_gateway] [startup] Environment variables loaded")
 
+# Import microservices and utilities
 from backend.microservices.summarization_service import run_summarization, process_articles
 from backend.microservices.news_fetcher import fetch_news
 from backend.core.config import Config
@@ -30,16 +55,16 @@ from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
 from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks, delete_bookmark
 
-# Initialize logger
+# Initialize logger for the API Gateway
 logger = setup_logger(__name__)
 print("[DEBUG] [api_gateway] [startup] Logger initialized")
 
-# Initialize Flask app with CORS support
+# Initialize Flask application with security configurations
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')  # Change this in production
+app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')  # JWT secret key for token signing
 print("[DEBUG] [api_gateway] [startup] Flask app initialized with secret key")
 
-# Improved CORS configuration to handle preflight requests properly
+# Configure CORS to allow specific origins and methods
 CORS(app, 
      origins=["http://localhost:5173", "http://localhost:5001"], 
      supports_credentials=True, 
@@ -47,12 +72,12 @@ CORS(app,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 print("[DEBUG] [api_gateway] [startup] CORS configured")
 
-# Initialize Flask-RestX
+# Initialize Flask-RestX for API documentation
 api = Api(app, version='1.0', title='News Aggregator API',
           description='A news aggregation and summarization API')
 print("[DEBUG] [api_gateway] [startup] Flask-RestX API initialized")
 
-# Define namespaces
+# Define API namespaces for logical grouping of endpoints
 news_ns = api.namespace('api/news', description='News operations')
 health_ns = api.namespace('health', description='Health check operations')
 summarize_ns = api.namespace('summarize', description='Text summarization operations')
@@ -63,6 +88,20 @@ story_tracking_ns = api.namespace('api/story_tracking', description='Story track
 print("[DEBUG] [api_gateway] [startup] API namespaces defined")
 
 def token_required(f):
+    """Decorator to protect routes that require authentication.
+    
+    This decorator validates the JWT token in the Authorization header.
+    It ensures that only authenticated users can access protected endpoints.
+    
+    Args:
+        f: The function to be decorated.
+        
+    Returns:
+        decorated: The decorated function that includes token validation.
+        
+    Raises:
+        401: If the token is missing or invalid.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         print("[DEBUG] [api_gateway] [token_required] Checking token in request")
@@ -71,7 +110,7 @@ def token_required(f):
             print("[DEBUG] [api_gateway] [token_required] Authorization header missing")
             return {'error': 'Authorization header missing'}, 401
         try:
-            token = auth_header.split()[1]
+            token = auth_header.split()[1]  # Extract token from 'Bearer <token>'
             print(f"[DEBUG] [api_gateway] [token_required] Decoding token: {token[:10]}...")
             payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'],audience='authenticated')
             print(f"[DEBUG] [api_gateway] [token_required] Token decoded successfully, user: {payload.get('sub', 'unknown')}")
@@ -82,7 +121,7 @@ def token_required(f):
             return {'error': 'Invalid token', 'message': str(e)}, 401
     return decorated
 
-# Define models for documentation
+# Define API models for request/response documentation
 article_model = api.model('Article', {
     'article_text': fields.String(required=True, description='The text to summarize')
 })
@@ -96,7 +135,7 @@ user_profile_model = api.model('UserProfile', {
     'avatarUrl': fields.String(description='URL to user avatar')
 })
 
-# Model for user signup
+# Model for user registration
 signup_model = api.model('Signup', {
     'username': fields.String(required=True, description='Username'),
     'password': fields.String(required=True, description='Password'),
@@ -107,20 +146,33 @@ signup_model = api.model('Signup', {
 
 print("[DEBUG] [api_gateway] [startup] API models defined")
 
-# Health check endpoint
+# Health check endpoint for system monitoring
 @health_ns.route('/')
 class HealthCheck(Resource):
     def get(self):
-        """Check if API Gateway is healthy"""
+        """Check the health status of the API Gateway.
+        
+        Returns:
+            dict: A dictionary containing the health status.
+            int: HTTP 200 status code indicating success.
+        """
         print("[DEBUG] [api_gateway] [health_check] Called")
         return {"status": "API Gateway is healthy"}, 200
 
-# Summarization endpoint
+# Endpoint for article summarization
 @summarize_ns.route('/')
 class Summarize(Resource):
     @summarize_ns.expect(article_model)
     def post(self):
-        """Summarize the given article text"""
+        """Summarize the provided article text.
+        
+        Expects a JSON payload with 'article_text' field.
+        Uses the summarization service to generate a concise summary.
+        
+        Returns:
+            dict: Contains the generated summary.
+            int: HTTP 200 status code on success.
+        """
         print("[DEBUG] [api_gateway] [summarize] Called")
         data = request.get_json()
         article_text = data.get('article_text', '')
@@ -135,8 +187,19 @@ class NewsFetch(Resource):
     @news_ns.param('user_id', 'User ID for logging search history')
     @news_ns.param('session_id', 'Session ID for tracking requests')
     def get(self):
-        """
-        Fetch news articles, store them in Supabase, and log user search history if a user ID is provided.
+        """Fetch news articles based on a keyword and store them in Supabase.
+        
+        This endpoint fetches news articles matching the provided keyword,
+        stores them in Supabase, and logs the search history if a user ID is provided.
+        
+        Args:
+            keyword (str): The search term for fetching news articles.
+            user_id (str, optional): User ID for logging search history.
+            session_id (str): Session ID for tracking the request.
+            
+        Returns:
+            dict: Contains the stored article IDs and success status.
+            int: HTTP 200 on success, 500 on error.
         """
         try:
             keyword = request.args.get('keyword', '')
@@ -173,12 +236,22 @@ class NewsFetch(Resource):
             }), 500)
 
 
-# News processing endpoint
 @news_ns.route('/process')
 class NewsProcess(Resource):
     @news_ns.param('session_id', 'Session ID for tracking requests')
     def post(self):
-        """Process and summarize articles"""
+        """Process and summarize a batch of articles.
+        
+        This endpoint processes articles associated with the provided session ID,
+        generating summaries and performing any necessary data transformations.
+        
+        Args:
+            session_id (str): Session ID for tracking the request and identifying articles.
+            
+        Returns:
+            dict: Contains processed articles data and success status.
+            int: HTTP 200 on success, 500 on error.
+        """
         try:
             session_id = request.args.get('session_id')
             print(f"[DEBUG] [api_gateway] [news_process] Called with session_id: {session_id}")
@@ -199,12 +272,28 @@ class NewsProcess(Resource):
                 'message': str(e)
             }, 500
 
-# User authentication endpoints
 @auth_ns.route('/signup')
 class Signup(Resource):
     @auth_ns.expect(signup_model)
     def post(self):
-        """Register a new user"""
+        """Register a new user in the system.
+        
+        Creates a new user account with the provided information and generates
+        a JWT token for immediate authentication.
+        
+        Expected JSON payload:
+        {
+            'username': str (required),
+            'password': str (required),
+            'email': str (required),
+            'firstName': str (optional),
+            'lastName': str (optional)
+        }
+        
+        Returns:
+            dict: Contains user data (excluding password) and JWT token.
+            int: HTTP 201 on success, 400 on validation error, 500 on server error.
+        """
         print("[DEBUG] [api_gateway] [signup] User signup endpoint called")
         data = request.get_json()
         username = data.get('username')
@@ -266,7 +355,20 @@ class Signup(Resource):
 @auth_ns.route('/login')
 class Login(Resource):
     def post(self):
-        """Login and get authentication token"""
+        """Authenticate user and generate JWT token.
+        
+        Validates user credentials and generates a JWT token for authenticated access.
+        
+        Expected JSON payload:
+        {
+            'username': str (required),
+            'password': str (required)
+        }
+        
+        Returns:
+            dict: Contains user data (excluding password) and JWT token.
+            int: HTTP 200 on success, 400 on validation error, 401 on invalid credentials.
+        """
         print("[DEBUG] [api_gateway] [login] Login endpoint called")
         data = request.get_json()
         username = data.get('username')
@@ -303,7 +405,15 @@ class UserProfile(Resource):
     @token_required
     @user_ns.marshal_with(user_profile_model)
     def get(self):
-        """Get user profile information"""
+        """Retrieve authenticated user's profile information.
+        
+        Requires a valid JWT token in the Authorization header.
+        Returns the user's profile data excluding sensitive information.
+        
+        Returns:
+            dict: User profile data including id, username, email, and names.
+            int: HTTP 200 on success, 404 if user not found.
+        """
         print("[DEBUG] [api_gateway] [user_profile] Called")
         auth_header = request.headers.get('Authorization')
         token = auth_header.split()[1]
@@ -324,10 +434,17 @@ class UserProfile(Resource):
 class Bookmark(Resource):
     @token_required
     def get(self):
-        """Get all bookmarked articles for the authenticated user"""
+        """Retrieve all bookmarks for the authenticated user.
+        
+        Requires a valid JWT token in the Authorization header.
+        Returns a list of bookmarked articles for the current user.
+        
+        Returns:
+            dict: Contains list of bookmarked articles and success status.
+            int: HTTP 200 on success, 500 on error.
+        """
         try:
             print("[DEBUG] [api_gateway] [get_bookmarks] Called")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [get_bookmarks] Decoding token: {token[:10]}...")
@@ -335,7 +452,6 @@ class Bookmark(Resource):
             user_id = payload.get('sub')
             print(f"[DEBUG] [api_gateway] [get_bookmarks] Getting bookmarks for user: {user_id}")
 
-            # Get bookmarks using the news_storage service
             bookmarks = get_user_bookmarks(user_id)
             print(f"[DEBUG] [api_gateway] [get_bookmarks] Found {len(bookmarks)} bookmarks")
 
@@ -354,10 +470,22 @@ class Bookmark(Resource):
 
     @token_required
     def post(self):
-        """Add a bookmark for a news article"""
+        """Add a new bookmark for the authenticated user.
+        
+        Requires a valid JWT token in the Authorization header.
+        Creates a bookmark linking the user to a specific news article.
+        
+        Expected JSON payload:
+        {
+            'news_id': str (required)
+        }
+        
+        Returns:
+            dict: Contains bookmark ID and success status.
+            int: HTTP 201 on success, 400 on validation error, 500 on server error.
+        """
         try:
             print("[DEBUG] [api_gateway] [add_bookmark] Called")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [add_bookmark] Decoding token: {token[:10]}...")
@@ -365,7 +493,6 @@ class Bookmark(Resource):
             user_id = payload.get('sub')
             print(f"[DEBUG] [api_gateway] [add_bookmark] Adding bookmark for user: {user_id}")
 
-            # Get the news article ID from the request body
             data = request.get_json()
             news_id = data.get('news_id')
             print(f"[DEBUG] [api_gateway] [add_bookmark] News article ID: {news_id}")
@@ -374,7 +501,6 @@ class Bookmark(Resource):
                 print("[DEBUG] [api_gateway] [add_bookmark] News article ID missing in request")
                 return {'error': 'News article ID is required'}, 400
 
-            # Add the bookmark using the news_storage service
             print(f"[DEBUG] [api_gateway] [add_bookmark] Adding bookmark for user {user_id}, article {news_id}")
             bookmark = add_bookmark(user_id, news_id)
             print(f"[DEBUG] [api_gateway] [add_bookmark] Bookmark added with ID: {bookmark['id'] if isinstance(bookmark, dict) else bookmark}")
@@ -399,10 +525,20 @@ class Bookmark(Resource):
 class BookmarkDelete(Resource):
     @token_required
     def delete(self, bookmark_id):
-        """Remove a bookmark for a news article"""
+        """Remove a bookmark for a news article.
+
+        Requires a valid JWT token in the Authorization header.
+        Deletes the specified bookmark for the authenticated user.
+
+        Args:
+            bookmark_id (str): The ID of the bookmark to be deleted.
+
+        Returns:
+            dict: Contains success message.
+            int: HTTP 200 on success, 500 on error.
+        """
         try:
             print(f"[DEBUG] [api_gateway] [delete_bookmark] Called for bookmark: {bookmark_id}")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [delete_bookmark] Decoding token: {token[:10]}...")
@@ -410,7 +546,6 @@ class BookmarkDelete(Resource):
             user_id = payload.get('sub')
             print(f"[DEBUG] [api_gateway] [delete_bookmark] Deleting bookmark {bookmark_id} for user {user_id}")
 
-            # Delete the bookmark using the news_storage service
             result = delete_bookmark(user_id, bookmark_id)
             print(f"[DEBUG] [api_gateway] [delete_bookmark] Deletion result: {result}")
             
@@ -426,21 +561,22 @@ class BookmarkDelete(Resource):
                 'status': 'error',
                 'message': str(e)
             }, 500
-            
-            
-            
-# Import story tracking service
-from backend.microservices.story_tracking_service import (
-    create_tracked_story, get_tracked_stories, get_story_details, 
-    delete_tracked_story, find_related_articles, update_all_tracked_stories
-)
-print("[DEBUG] [api_gateway] [startup] Story tracking service modules imported")
 
 @story_tracking_ns.route('/')
 class StoryTracking(Resource):
     @story_tracking_ns.param('keyword', 'Keyword to track for news updates')
     def get(self):
-        """Fetch latest news for a tracked keyword"""
+        """Fetch latest news for a tracked keyword.
+
+        Retrieves and processes the latest news articles for a given keyword.
+
+        Args:
+            keyword (str): The keyword to search for news articles.
+
+        Returns:
+            dict: Contains list of processed articles and success status.
+            int: HTTP 200 on success, 400 if keyword is missing, 500 on error.
+        """
         try:
             print("[DEBUG] [api_gateway] [story_tracking] Story tracking get endpoint called")
             keyword = request.args.get('keyword')
@@ -485,10 +621,23 @@ class StoryTracking(Resource):
     
     @token_required
     def post(self):
-        """Create a new tracked story"""
+        """Create a new tracked story.
+
+        Requires a valid JWT token in the Authorization header.
+        Creates a new tracked story for the authenticated user based on a keyword and source article.
+
+        Expected JSON payload:
+        {
+            'keyword': str (required),
+            'sourceArticleId': str (optional)
+        }
+
+        Returns:
+            dict: Contains created story details and success status.
+            int: HTTP 201 on success, 400 on validation error, 500 on server error.
+        """
         try:
             print("[DEBUG] [api_gateway] [story_tracking] Called")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [story_tracking] Decoding token: {token[:10]}...")
@@ -496,7 +645,6 @@ class StoryTracking(Resource):
             user_id = payload.get('sub')
             print(f"[DEBUG] [api_gateway] [story_tracking] Creating tracked story for user: {user_id}")
             
-            # Get request data
             data = request.get_json()
             keyword = data.get('keyword')
             source_article_id = data.get('sourceArticleId')
@@ -534,10 +682,17 @@ class StoryTracking(Resource):
 class UserStoryTracking(Resource):
     @token_required
     def get(self):
-        """Get all tracked stories for the authenticated user"""
+        """Get all tracked stories for the authenticated user.
+
+        Requires a valid JWT token in the Authorization header.
+        Retrieves all tracked stories associated with the authenticated user.
+
+        Returns:
+            dict: Contains list of tracked stories and success status.
+            int: HTTP 200 on success, 500 on error.
+        """
         try:
             print("[DEBUG] [api_gateway] [user_story_tracking] Called")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [user_story_tracking] Decoding token: {token[:10]}...")
@@ -566,7 +721,18 @@ class UserStoryTracking(Resource):
 class StoryTrackingDetail(Resource):
     @token_required
     def get(self, story_id):
-        """Get details for a specific tracked story"""
+        """Get details for a specific tracked story.
+
+        Requires a valid JWT token in the Authorization header.
+        Retrieves detailed information about a specific tracked story.
+
+        Args:
+            story_id (str): The ID of the tracked story to retrieve.
+
+        Returns:
+            dict: Contains story details and success status.
+            int: HTTP 200 on success, 404 if story not found, 500 on error.
+        """
         try:
             print(f"[DEBUG] [api_gateway] [story_tracking_detail] Called for story: {story_id}")
             print(f"[DEBUG] [api_gateway] [story_tracking_detail] Calling get_story_details for story: {story_id}")
@@ -596,10 +762,20 @@ class StoryTrackingDetail(Resource):
     
     @token_required
     def delete(self, story_id):
-        """Stop tracking a story"""
+        """Stop tracking a story.
+
+        Requires a valid JWT token in the Authorization header.
+        Deletes a tracked story for the authenticated user.
+
+        Args:
+            story_id (str): The ID of the tracked story to delete.
+
+        Returns:
+            dict: Contains success message.
+            int: HTTP 200 on success, 404 if story not found, 500 on error.
+        """
         try:
             print(f"[DEBUG] [api_gateway] [delete_story_tracking] Called for story: {story_id}")
-            # Get the user ID from the token
             auth_header = request.headers.get('Authorization')
             token = auth_header.split()[1]
             print(f"[DEBUG] [api_gateway] [delete_story_tracking] Decoding token: {token[:10]}...")
@@ -634,6 +810,14 @@ class StoryTrackingDetail(Resource):
 
 @app.route('/api/story_tracking', methods=['OPTIONS'])
 def story_tracking_options():
+    """Handle OPTIONS requests for the story tracking endpoint.
+
+    This function sets the necessary CORS headers for preflight requests
+    to the story tracking endpoint.
+
+    Returns:
+        Response: A Flask response object with appropriate CORS headers.
+    """
     print("[DEBUG] [api_gateway] [story_tracking_options] Called")
     response = make_response()
     response.headers.add("Access-Control-Allow-Origin", "*")

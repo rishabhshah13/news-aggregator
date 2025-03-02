@@ -1,7 +1,27 @@
 #!/usr/bin/env python3
 """
 story_tracking_service.py - Microservice for Story Tracking
-Provides functionality for tracking news stories by keyword and finding related articles.
+
+This service provides functionality for tracking news stories by keyword and finding related articles.
+It integrates with Supabase for data persistence and manages user story tracking preferences.
+
+Key Features:
+- Story tracking by keywords
+- Related article discovery
+- User story management
+- Automatic story updates
+
+The service uses clustering algorithms to group similar articles and maintains
+relationships between tracked stories and their associated articles.
+
+Database Tables Used:
+- tracked_stories: Stores user story tracking preferences
+- tracked_story_articles: Links stories to their related articles
+- news_articles: Stores article content and metadata
+
+Environment Variables Required:
+- VITE_SUPABASE_URL: Supabase project URL
+- SUPABASE_SERVICE_ROLE_KEY: Service role key for admin access
 """
 
 import os
@@ -11,25 +31,41 @@ from dotenv import load_dotenv
 from summarization.story_tracking.story_tracking import cluster_articles
 from backend.microservices.news_fetcher import fetch_news
 
+# Service initialization logging
 print("[DEBUG] [story_tracking_service] [main] Story tracking service starting...")
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 print("[DEBUG] [story_tracking_service] [main] Environment variables loaded")
 
 # Initialize Supabase client with service role key for admin access to bypass RLS
+# RLS (Row Level Security) policies are bypassed when using the service role key
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
-# Use service role key instead of anon key to bypass RLS policies
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 print(f"[DEBUG] [story_tracking_service] [main] Supabase URL: {SUPABASE_URL}")
 print(f"[DEBUG] [story_tracking_service] [main] Supabase Key: {SUPABASE_SERVICE_KEY[:5]}..." if SUPABASE_SERVICE_KEY else "[DEBUG] [story_tracking_service] [main] Supabase Key: None")
 
+# Create Supabase client for database operations
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 print("[DEBUG] [story_tracking_service] [main] Supabase client initialized")
 
 def run_story_tracking(article_embeddings):
+    """
+    Runs the story tracking algorithm on a set of article embeddings to identify story clusters.
+    
+    This function uses clustering algorithms to group similar articles together based on their
+    vector embeddings, helping to identify distinct news stories or topics.
+    
+    Args:
+        article_embeddings: List of vector embeddings for articles. Each embedding should be
+                          a numerical vector representing the article's content.
+                          
+    Returns:
+        list: A list of cluster labels indicating which story cluster each article belongs to.
+              Empty list is returned if article_embeddings is None or empty.
+    """
     print(f"[DEBUG] [story_tracking_service] [run_story_tracking] Running story tracking with {len(article_embeddings) if article_embeddings else 0} embeddings")
     labels = cluster_articles(article_embeddings)
     print(f"[DEBUG] [story_tracking_service] [run_story_tracking] Clustering complete, found {len(labels) if labels else 0} labels")
@@ -333,8 +369,14 @@ def update_all_tracked_stories():
     """
     Background job to update all tracked stories with new related articles.
     
+    This function is designed to be run as a scheduled task to keep all tracked stories
+    up-to-date with the latest news articles. It iterates through all tracked stories in the
+    database and calls find_related_articles() for each one to fetch and link new articles.
+    
     Returns:
-        Dictionary with counts of stories updated and new articles found
+        dict: A dictionary containing statistics about the update operation:
+              - stories_updated: Number of stories that received new articles
+              - new_articles: Total number of new articles added across all stories
     """
     print(f"[DEBUG] [story_tracking_service] [update_all_tracked_stories] Starting update of all tracked stories")
     try:
@@ -374,7 +416,7 @@ def update_all_tracked_stories():
         raise e
 
 if __name__ == '__main__':
-    # Example usage
+    # Example usage - this code runs when the script is executed directly
     print("[DEBUG] [story_tracking_service] [main] Running story_tracking_service.py as main")
     result = update_all_tracked_stories()
     print(f"[DEBUG] [story_tracking_service] [main] Updated {result['stories_updated']} stories with {result['new_articles']} new articles")
