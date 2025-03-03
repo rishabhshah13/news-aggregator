@@ -24,11 +24,13 @@ Environment Variables Required:
 - SUPABASE_SERVICE_ROLE_KEY: Service role key for admin access
 """
 
+#TODO: Implement proper background processing: Use a task queue like Celery to handle article fetching in the background
+
 import os
 import datetime
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from summarization.story_tracking.story_tracking import cluster_articles
+# from summarization.story_tracking.story_tracking import cluster_articles
 from backend.microservices.news_fetcher import fetch_news
 
 # Service initialization logging
@@ -125,8 +127,8 @@ def create_tracked_story(user_id, keyword, source_article_id=None):
                 "added_at": datetime.datetime.utcnow().isoformat()
             }).execute()
         
-        # Immediately find and add related articles
-        print(f"[DEBUG] [story_tracking_service] [create_tracked_story] Finding related articles for new tracked story")
+        # Log that we're skipping synchronous article fetching
+        print(f"[DEBUG] [story_tracking_service] [create_tracked_story] Skipping synchronous article fetching to avoid resource contention")
         find_related_articles(tracked_story["id"], keyword)
         
         return tracked_story

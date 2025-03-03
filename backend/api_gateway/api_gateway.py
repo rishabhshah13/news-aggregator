@@ -54,6 +54,8 @@ from backend.core.config import Config
 from backend.core.utils import setup_logger, log_exception
 from backend.microservices.auth_service import load_users
 from backend.microservices.news_storage import store_article_in_supabase, log_user_search, add_bookmark, get_user_bookmarks, delete_bookmark
+from backend.microservices.story_tracking_service import get_tracked_stories, create_tracked_story, get_story_details, delete_tracked_story
+
 
 # Initialize logger for the API Gateway
 logger = setup_logger(__name__)

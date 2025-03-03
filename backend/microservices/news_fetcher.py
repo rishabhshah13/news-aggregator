@@ -55,7 +55,7 @@ def fetch_news(keyword='', session_id=None):
     params = {
         'q': keyword,  # Search query parameter
         'apiKey': NEWS_API_KEY,
-        'pageSize': 10  # Limit results to 10 articles per request
+        'pageSize': 1  # Limit results to 10 articles per request
     }
 
     try:
