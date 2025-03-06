@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/api_gateway/api_gateway.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/api_gateway/api_gateway.py"
+    },
+    {
+      "src": "/health",
+      "dest": "backend/api_gateway/api_gateway.py"
+    },
+    {
+      "src": "/summarize",
+      "dest": "backend/api_gateway/api_gateway.py"
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "@VITE_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY": "@SUPABASE_SERVICE_ROLE_KEY",
+    "JWT_SECRET_KEY": "@JWT_SECRET_KEY",
+    "OPENAI_API_KEY": "@OPENAI_API_KEY"
+  }
+}
