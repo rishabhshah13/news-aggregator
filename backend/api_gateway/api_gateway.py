@@ -830,7 +830,7 @@ def story_tracking_options():
 
 if __name__ == '__main__':
     # Read the port from the environment (Cloud Run sets the PORT variable)
-    port = int(os.environ.get("PORT", Config.API_PORT))
+    port = int(os.environ.get("PORT", 8080))
     # Listen on 0.0.0.0 so the service is reachable externally
     print(f"[DEBUG] [api_gateway] [main] Starting on {Config.API_HOST}:{port} with debug={True}")
     app.run(host="0.0.0.0", port=port, debug=True)
