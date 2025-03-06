@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port 5000 (Cloud Run sets the PORT env variable)
-EXPOSE 5000
+EXPOSE 8080
 
 # Run the API Gateway.
 # Cloud Run will set PORT, so we use that environment variable.
-CMD ["sh", "-c", "python backend/api_gateway/api_gateway.py ${PORT:-5000}"]
+CMD ["sh", "-c", "python backend/api_gateway/api_gateway.py ${PORT:-8080}"]
