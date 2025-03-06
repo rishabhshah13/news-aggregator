@@ -24,13 +24,15 @@ import os
 # Initialize logger
 logger = setup_logger(__name__)
 
-# Configure OpenAI
+# Configure OpenAI with your API key from environment variables
 openai.api_key = Config.OPENAI_API_KEY
-client = openai.OpenAI()
+
+# No need to instantiate a client object; we'll use openai.ChatCompletion.create directly.
+
 from supabase import create_client, Client  # Make sure you're using supabase-py or your preferred client
 
 from dotenv import load_dotenv
-load_dotenv('../../.env')
+load_dotenv('../../.env')  # Optional: Only use this for local development.
 
 # Use your service key here for secure server-side operations.
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
@@ -49,17 +51,12 @@ def fetch_article_content(url):
     Returns:
         str or None: The extracted article content as plain text.
                     Returns None if the fetch fails or content is invalid.
-
-    Raises:
-        Various requests exceptions are caught and logged internally.
     """
     try:
-        # Check if URL is valid
         if not url or not url.startswith('http'):
             logger.error(f"Invalid URL format: {url}")
             return None
 
-        # Set timeout and headers for request
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -92,6 +89,7 @@ def fetch_article_content(url):
         logger.error(f"Unexpected error processing {url}: {str(e)}")
         return None
 
+
 @log_exception(logger)
 def run_summarization(text):
     """
@@ -105,16 +103,13 @@ def run_summarization(text):
              Returns an error message if summarization fails.
 
     Note:
-        Uses OpenAI's GPT-4 model with specific parameters for optimal summarization:
-        - Temperature: 0.5 (balanced between creativity and consistency)
-        - Max tokens: 200 (ensures concise output)
+        Uses OpenAI's GPT-4 (or your specified model) with specific parameters:
+        - Temperature: 0.5
+        - Max tokens: 200
     """
     try:
-        return "Summarized text here"
-    
-    #     model="gpt-3.5 turbo",
-        response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  # Change to your desired model (e.g., "gpt-3.5-turbo")
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes text in approximately 150 words."},
                 {"role": "user", "content": f"Please summarize the following text:\n\n{text}"}
@@ -126,6 +121,7 @@ def run_summarization(text):
     except Exception as e:
         logger.error(f"Error in summarization: {str(e)}")
         return "Error generating summary"
+
 
 @log_exception(logger)
 def get_keywords(text, num_keywords=1):
@@ -150,34 +146,21 @@ def process_articles(session_id):
     Processes a batch of articles associated with a specific session ID.
     
     This function performs the following operations:
-    1. Retrieves articles from Supabase based on the session ID
-    2. Fetches missing content for articles if needed
-    3. Generates summaries for each article
-    4. Extracts keywords for filtering
+    1. Retrieves articles from Supabase based on the session ID.
+    2. Fetches missing content for articles if needed.
+    3. Generates summaries for each article.
+    4. Extracts keywords for filtering.
     
     Args:
         session_id (str): The unique identifier for the user session.
 
     Returns:
-        list: A list of dictionaries containing processed article data including:
-             - Basic article metadata (title, author, source, etc.)
-             - Generated summary
-             - Extracted keywords
-             - Original and fetched content
-
-    Raises:
-        Exception: If there's an error during processing, it's logged and re-raised.
+        list: A list of dictionaries containing processed article data.
     """
     try:
-        # Query only articles that belong to the current session.
-        # result = supabase.table("news_articles").select("*").eq("session_id", session_id).execute()
-        # articles = result.data
-        
-        # First, query the user_search_history table for records with this session_id.
         history_result = supabase.table("user_search_history").select("news_id").eq("session_id", session_id).execute()
         article_ids = [record["news_id"] for record in history_result.data]
 
-        # Now, query the news_articles table for those article IDs.
         articles = []
         if article_ids:
             result = supabase.table("news_articles").select("*").in_("id", article_ids).execute()
@@ -209,19 +192,12 @@ def process_articles(session_id):
                 'filter_keywords': get_keywords(article.get('content', ''))
             })
 
-        # Optionally, save or return the summarized articles.
-        # output_file = f'{session_id}_summarized_news.json'
-        # output_path = Config.get_summarized_news_path() / output_file
-        # with open(output_path, 'w') as file:
-        #     json.dump(summarized_articles, file, indent=4)
-        # logger.info(f"Summarized articles saved to {output_path}")
-
         return summarized_articles
 
     except Exception as e:
         logger.error(f"Error processing articles: {str(e)}")
         raise e
-    
+
 
 if __name__ == '__main__':
     process_articles()
