@@ -1,0 +1,8 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/news-aggregator:$COMMIT_SHA', '.']
+images:
+  - 'gcr.io/$PROJECT_ID/news-aggregator:$COMMIT_SHA'
+options:
+  logging: CLOUD_LOGGING_ONLY  # or NONE, if you prefer no logs
+serviceAccount: "projects/$PROJECT_ID/serviceAccounts/99775608725-compute@developer.gserviceaccount.com"

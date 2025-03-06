@@ -4,6 +4,8 @@
 requests
 beautifulsoup4
 feedparser
+aiohttp
+
 # transformer
 torch
 
@@ -11,14 +13,25 @@ torch
 numpy
 scikit-learn
 openai==0.28
+yake
+nltk
 
 # Backend & API
 Flask
 flask-socketio
 python-dotenv
+flask-cors==4.0.0
+gunicorn==21.2.0
+pydantic
+tenacity
+loguru
+PyJWT==2.8.0
+flask-jwt-extended==4.5.3
 
 # Caching & Storage
 redis
+supabase
+psycopg2-binary
 
 # Testing
 pytest

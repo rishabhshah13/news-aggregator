@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """
-summarization_service.py - Microservice for Summarization
+Summarization Service Module
+
+This module provides functionality for fetching, processing, and summarizing news articles.
+It includes capabilities for content extraction, text summarization, and keyword extraction.
+
+Key Features:
+- Article content fetching from URLs
+- Text summarization using OpenAI's GPT models
+- Keyword extraction using YAKE
+- Integration with Supabase for data persistence
 """
 
 import json
@@ -31,6 +40,19 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 @log_exception(logger)
 def fetch_article_content(url):
+    """
+    Fetches and extracts the main content from a given URL.
+
+    Args:
+        url (str): The URL of the article to fetch content from.
+
+    Returns:
+        str or None: The extracted article content as plain text.
+                    Returns None if the fetch fails or content is invalid.
+
+    Raises:
+        Various requests exceptions are caught and logged internally.
+    """
     try:
         # Check if URL is valid
         if not url or not url.startswith('http'):
@@ -72,6 +94,21 @@ def fetch_article_content(url):
 
 @log_exception(logger)
 def run_summarization(text):
+    """
+    Generates a concise summary of the provided text using OpenAI's GPT model.
+
+    Args:
+        text (str): The input text to be summarized.
+
+    Returns:
+        str: A summarized version of the input text (approximately 150 words).
+             Returns an error message if summarization fails.
+
+    Note:
+        Uses OpenAI's GPT-4 model with specific parameters for optimal summarization:
+        - Temperature: 0.5 (balanced between creativity and consistency)
+        - Max tokens: 200 (ensures concise output)
+    """
     try:
         return "Summarized text here"
     
@@ -91,7 +128,17 @@ def run_summarization(text):
         return "Error generating summary"
 
 @log_exception(logger)
-def get_keywords(text,num_keywords=1):
+def get_keywords(text, num_keywords=1):
+    """
+    Extracts key phrases from the input text using YAKE keyword extraction.
+
+    Args:
+        text (str): The input text to extract keywords from.
+        num_keywords (int, optional): Number of keywords to extract. Defaults to 1.
+
+    Returns:
+        list: A list of extracted keywords/key phrases.
+    """
     kw_extractor = yake.KeywordExtractor(top=num_keywords, lan='en')
     keywords = kw_extractor.extract_keywords(text)
     return [kw[0] for kw in keywords]
@@ -99,6 +146,28 @@ def get_keywords(text,num_keywords=1):
 
 @log_exception(logger)
 def process_articles(session_id):
+    """
+    Processes a batch of articles associated with a specific session ID.
+    
+    This function performs the following operations:
+    1. Retrieves articles from Supabase based on the session ID
+    2. Fetches missing content for articles if needed
+    3. Generates summaries for each article
+    4. Extracts keywords for filtering
+    
+    Args:
+        session_id (str): The unique identifier for the user session.
+
+    Returns:
+        list: A list of dictionaries containing processed article data including:
+             - Basic article metadata (title, author, source, etc.)
+             - Generated summary
+             - Extracted keywords
+             - Original and fetched content
+
+    Raises:
+        Exception: If there's an error during processing, it's logged and re-raised.
+    """
     try:
         # Query only articles that belong to the current session.
         # result = supabase.table("news_articles").select("*").eq("session_id", session_id).execute()

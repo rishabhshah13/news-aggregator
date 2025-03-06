@@ -11,7 +11,7 @@ class Config:
     
     # API Configuration
     API_HOST = os.getenv('API_HOST', 'localhost')
-    API_PORT = int(os.getenv('API_PORT', 5001))
+    API_PORT = int(os.getenv('API_PORT', 8080))
     
     # Redis Configuration
     REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
